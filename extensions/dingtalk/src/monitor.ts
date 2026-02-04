@@ -4,6 +4,7 @@ import type { DingtalkProbeResult } from "./config.js";
 import { DWClient, TOPIC_ROBOT, type DWClientDownStream } from "dingtalk-stream";
 import { getDingtalkRuntime } from "./runtime.js";
 import { sendMessageDingtalk } from "./send.js";
+import { registerDingtalkClient, unregisterDingtalkClient } from "./client-registry.js";
 
 
 // ============================================================================
@@ -135,6 +136,9 @@ export async function monitorDingtalkProvider(params: MonitorDingtalkParams): Pr
         debug: false,
     });
 
+    // 注册到全局注册表以便发送端复用
+    registerDingtalkClient(accountId, client);
+
     // 注册机器人消息回调
     client.registerCallbackListener(TOPIC_ROBOT, async (res: DWClientDownStream) => {
         try {
@@ -189,8 +193,8 @@ export async function monitorDingtalkProvider(params: MonitorDingtalkParams): Pr
     return new Promise((resolve) => {
         abortSignal.addEventListener("abort", () => {
             logger.info("Stream provider stopping...");
+            unregisterDingtalkClient(accountId);
             // 注意：dingtalk-stream SDK 可能没有提供断开连接的方法
-            // 这里我们依赖进程退出来清理连接
             resolve();
         });
     });
@@ -284,12 +288,16 @@ export function createOpenClawMessageHandler(params: {
                 const text = payload.text || "";
                 if (!text && !payload.mediaUrl && !(payload.mediaUrls?.length)) return;
 
-                // 优先使用 sessionWebhook (适用于群聊即时回复)
-                const deliverTarget = isGroup && message.sessionWebhook ? message.sessionWebhook : to;
+                // 优先使用 sessionWebhook (适用于流模式即时回复)
+                const deliverTarget = message.sessionWebhook || to;
+
+                // 自动把原发送者加入艾特列表 (如果是群聊回复)
+                const atUsers = isGroup ? [senderId] : undefined;
 
                 await sendMessageDingtalk(deliverTarget, text, {
                     cfg,
                     accountId,
+                    atUsers,
                 });
             },
             onError: (err) => {

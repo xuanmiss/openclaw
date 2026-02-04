@@ -106,9 +106,17 @@ const dingtalkMessageActions: ChannelMessageActionAdapter = {
                 };
             }
 
+            const atUsersRaw = ctx.params.atUsers || ctx.params.atUserIds || ctx.params.mentions;
+            const atUsers = Array.isArray(atUsersRaw)
+                ? atUsersRaw.map(String)
+                : typeof atUsersRaw === "string"
+                    ? atUsersRaw.split(",").map(s => s.trim())
+                    : undefined;
+
             const result = await sendMessageDingtalk(to, message, {
                 cfg: ctx.cfg,
                 accountId: ctx.accountId ?? undefined,
+                atUsers,
             });
 
             return {
