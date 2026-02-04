@@ -265,6 +265,26 @@ export type MSTeamsStatus = {
   lastProbeAt?: number | null;
 };
 
+export type DingtalkProbe = {
+  ok: boolean;
+  error?: string | null;
+  robot?: {
+    name?: string;
+    robotCode?: string;
+  };
+};
+
+export type DingtalkStatus = {
+  configured: boolean;
+  tokenSource?: string | null;
+  running: boolean;
+  lastStartAt?: number | null;
+  lastStopAt?: number | null;
+  lastError?: string | null;
+  probe?: DingtalkProbe | null;
+  lastProbeAt?: number | null;
+};
+
 export type ConfigSnapshotIssue = {
   path: string;
   message: string;
@@ -433,23 +453,24 @@ export type CronWakeMode = "next-heartbeat" | "now";
 export type CronPayload =
   | { kind: "systemEvent"; text: string }
   | {
-      kind: "agentTurn";
-      message: string;
-      thinking?: string;
-      timeoutSeconds?: number;
-      deliver?: boolean;
-      provider?:
-        | "last"
-        | "whatsapp"
-        | "telegram"
-        | "discord"
-        | "slack"
-        | "signal"
-        | "imessage"
-        | "msteams";
-      to?: string;
-      bestEffortDeliver?: boolean;
-    };
+    kind: "agentTurn";
+    message: string;
+    thinking?: string;
+    timeoutSeconds?: number;
+    deliver?: boolean;
+    provider?:
+    | "last"
+    | "whatsapp"
+    | "telegram"
+    | "discord"
+    | "dingtalk"
+    | "slack"
+    | "signal"
+    | "imessage"
+    | "msteams";
+    to?: string;
+    bestEffortDeliver?: boolean;
+  };
 
 export type CronIsolation = {
   postToMainPrefix?: string;

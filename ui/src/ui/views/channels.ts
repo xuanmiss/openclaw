@@ -4,6 +4,7 @@ import type {
   ChannelUiMetaEntry,
   ChannelsStatusSnapshot,
   DiscordStatus,
+  DingtalkStatus,
   GoogleChatStatus,
   IMessageStatus,
   NostrProfile,
@@ -17,6 +18,7 @@ import type { ChannelKey, ChannelsChannelData, ChannelsProps } from "./channels.
 import { formatAgo } from "../format";
 import { renderChannelConfigSection } from "./channels.config";
 import { renderDiscordCard } from "./channels.discord";
+import { renderDingtalkCard } from "./channels.dingtalk";
 import { renderGoogleChatCard } from "./channels.googlechat";
 import { renderIMessageCard } from "./channels.imessage";
 import { renderNostrCard } from "./channels.nostr";
@@ -35,36 +37,36 @@ export function renderChannels(props: ChannelsProps) {
   const slack = (channels?.slack ?? null) as SlackStatus | null;
   const signal = (channels?.signal ?? null) as SignalStatus | null;
   const imessage = (channels?.imessage ?? null) as IMessageStatus | null;
+  const dingtalk = (channels?.dingtalk ?? null) as DingtalkStatus | null;
   const nostr = (channels?.nostr ?? null) as NostrStatus | null;
   const channelOrder = resolveChannelOrder(props.snapshot);
-  const orderedChannels = channelOrder
-    .map((key, index) => ({
-      key,
-      enabled: channelEnabled(key, props),
-      order: index,
-    }))
-    .toSorted((a, b) => {
-      if (a.enabled !== b.enabled) {
-        return a.enabled ? -1 : 1;
-      }
-      return a.order - b.order;
-    });
+  const orderedChannels = [...channelOrder.map((key, index) => ({
+    key,
+    enabled: channelEnabled(key, props),
+    order: index,
+  }))].sort((a: any, b: any) => {
+    if (a.enabled !== b.enabled) {
+      return a.enabled ? -1 : 1;
+    }
+    return a.order - b.order;
+  });
 
   return html`
     <section class="grid grid-cols-2">
-      ${orderedChannels.map((channel) =>
-        renderChannel(channel.key, props, {
-          whatsapp,
-          telegram,
-          discord,
-          googlechat,
-          slack,
-          signal,
-          imessage,
-          nostr,
-          channelAccounts: props.snapshot?.channelAccounts ?? null,
-        }),
-      )}
+      ${orderedChannels.map((channel: any) =>
+    renderChannel(channel.key, props, {
+      whatsapp,
+      telegram,
+      discord,
+      googlechat,
+      slack,
+      signal,
+      imessage,
+      dingtalk,
+      nostr,
+      channelAccounts: props.snapshot?.channelAccounts ?? null,
+    }),
+  )}
     </section>
 
     <section class="card" style="margin-top: 18px;">
@@ -75,13 +77,12 @@ export function renderChannels(props: ChannelsProps) {
         </div>
         <div class="muted">${props.lastSuccessAt ? formatAgo(props.lastSuccessAt) : "n/a"}</div>
       </div>
-      ${
-        props.lastError
-          ? html`<div class="callout danger" style="margin-top: 12px;">
+      ${props.lastError
+      ? html`<div class="callout danger" style="margin-top: 12px;">
             ${props.lastError}
           </div>`
-          : nothing
-      }
+      : nothing
+    }
       <pre class="code-block" style="margin-top: 12px;">
 ${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "No snapshot yet."}
       </pre>
@@ -90,13 +91,26 @@ ${props.snapshot ? JSON.stringify(props.snapshot, null, 2) : "No snapshot yet."}
 }
 
 function resolveChannelOrder(snapshot: ChannelsStatusSnapshot | null): ChannelKey[] {
-  if (snapshot?.channelMeta?.length) {
-    return snapshot.channelMeta.map((entry) => entry.id);
-  }
-  if (snapshot?.channelOrder?.length) {
-    return snapshot.channelOrder;
-  }
-  return ["whatsapp", "telegram", "discord", "googlechat", "slack", "signal", "imessage", "nostr"];
+  const defaults = ["whatsapp", "telegram", "dingtalk", "discord", "googlechat", "slack", "signal", "imessage", "nostr"];
+  const fromMeta = snapshot?.channelMeta?.map((entry) => entry.id) ?? [];
+  const fromOrder = snapshot?.channelOrder ?? [];
+
+  const seen = new Set<string>();
+  const result: ChannelKey[] = [];
+
+  const add = (id: string) => {
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  };
+
+  // 优先级：Snapshot Meta -> Snapshot Order -> Defaults
+  fromMeta.forEach(add);
+  fromOrder.forEach(add);
+  defaults.forEach(add);
+
+  return result;
 }
 
 function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChannelData) {
@@ -121,10 +135,16 @@ function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChan
         discord: data.discord,
         accountCountLabel,
       });
+    case "dingtalk":
+      return renderDingtalkCard({
+        props,
+        dingtalk: data.dingtalk,
+        accountCountLabel,
+      });
     case "googlechat":
       return renderGoogleChatCard({
         props,
-        googlechat: data.googlechat,
+        googleChat: data.googlechat,
         accountCountLabel,
       });
     case "slack":
@@ -155,12 +175,12 @@ function renderChannel(key: ChannelKey, props: ChannelsProps, data: ChannelsChan
         props.nostrProfileAccountId === accountId ? props.nostrProfileFormState : null;
       const profileFormCallbacks = showForm
         ? {
-            onFieldChange: props.onNostrProfileFieldChange,
-            onSave: props.onNostrProfileSave,
-            onImport: props.onNostrProfileImport,
-            onCancel: props.onNostrProfileCancel,
-            onToggleAdvanced: props.onNostrProfileToggleAdvanced,
-          }
+          onFieldChange: props.onNostrProfileFieldChange,
+          onSave: props.onNostrProfileSave,
+          onImport: props.onNostrProfileImport,
+          onCancel: props.onNostrProfileCancel,
+          onToggleAdvanced: props.onNostrProfileToggleAdvanced,
+        }
         : null;
       return renderNostrCard({
         props,
@@ -197,14 +217,13 @@ function renderGenericChannelCard(
       <div class="card-sub">Channel status and configuration.</div>
       ${accountCountLabel}
 
-      ${
-        accounts.length > 0
-          ? html`
+      ${accounts.length > 0
+      ? html`
             <div class="account-card-list">
               ${accounts.map((account) => renderGenericAccount(account))}
             </div>
           `
-          : html`
+      : html`
             <div class="status-list" style="margin-top: 16px;">
               <div>
                 <span class="label">Configured</span>
@@ -220,15 +239,14 @@ function renderGenericChannelCard(
               </div>
             </div>
           `
-      }
+    }
 
-      ${
-        lastError
-          ? html`<div class="callout danger" style="margin-top: 12px;">
+      ${lastError
+      ? html`<div class="callout danger" style="margin-top: 12px;">
             ${lastError}
           </div>`
-          : nothing
-      }
+      : nothing
+    }
 
       ${renderChannelConfigSection({ channelId: key, props })}
     </div>
@@ -310,15 +328,14 @@ function renderGenericAccount(account: ChannelAccountSnapshot) {
           <span class="label">Last inbound</span>
           <span>${account.lastInboundAt ? formatAgo(account.lastInboundAt) : "n/a"}</span>
         </div>
-        ${
-          account.lastError
-            ? html`
+        ${account.lastError
+      ? html`
               <div class="account-card-error">
                 ${account.lastError}
               </div>
             `
-            : nothing
-        }
+      : nothing
+    }
       </div>
     </div>
   `;
