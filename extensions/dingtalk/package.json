@@ -1,17 +1,54 @@
 {
-    "name": "@openclaw/dingtalk",
-    "version": "2026.2.1",
-    "description": "OpenClaw DingTalk (钉钉) channel plugin",
+    "name": "@xuanmiss-npm/dingtalk",
+    "version": "0.1.4",
+    "description": "OpenClaw DingTalk (钉钉) channel plugin - Stream mode",
     "type": "module",
+    "license": "MIT",
+    "author": "xuanmiss",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/xuanmiss/openclaw-dingtalk.git"
+    },
+    "homepage": "https://github.com/xuanmiss/openclaw-dingtalk#readme",
+    "bugs": {
+        "url": "https://github.com/xuanmiss/openclaw-dingtalk/issues"
+    },
+    "keywords": [
+        "openclaw",
+        "dingtalk",
+        "钉钉",
+        "chatbot",
+        "plugin"
+    ],
     "dependencies": {
-        "dingtalk-stream": "^2.1.4"
+        "dingtalk-stream": "^2.1.4",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
-        "openclaw": "workspace:*"
+        "@types/node": "^25.0.10",
+        "openclaw": "2026.1.29",
+        "typescript": "^5.7.0"
+    },
+    "peerDependencies": {
+        "openclaw": ">=2026.1.29"
     },
     "openclaw": {
         "extensions": [
             "./index.ts"
-        ]
+        ],
+        "channel": {
+            "id": "dingtalk",
+            "label": "DingTalk",
+            "selectionLabel": "DingTalk (钉钉 Stream)",
+            "docsPath": "/channels/dingtalk",
+            "docsLabel": "dingtalk",
+            "blurb": "企业级即时通讯平台钉钉，支持Stream模式接入。",
+            "order": 20
+        },
+        "install": {
+            "npmSpec": "@xuanmiss-npm/dingtalk",
+            "localPath": "extensions/dingtalk",
+            "defaultChoice": "npm"
+        }
     }
 }
